@@ -3,7 +3,7 @@
 Mule is a Go library that provides a convenient way to send UDP packets to multiple remote servers with unreachable ports and receive ICMP Destination/Port Unreachable packets from those servers. This can be useful for network diagnostics, port scanning, or other network-related tasks.
 
 
-![](mule.jpg){width=600px}
+![](mule.jpg)
 
 ## Features
 
