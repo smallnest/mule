@@ -17,7 +17,7 @@ Mule is a Go library that provides a convenient way to send UDP packets to multi
 To install Mule, use `go get`:
 
 ```
-go get github.com/k0s-io/mule
+go get github.com/smallnest/mule
 ```
 
 ## Usage
