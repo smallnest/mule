@@ -42,6 +42,19 @@ func NewIPUDPConn(localAddr string, port int) (*IPUDPConn, error) {
 		return nil, err
 	}
 
+	// only send packets with the drop all filter
+	dropAllFilter := createDropAllBPF()
+	filter, err := bpf.Assemble(dropAllFilter)
+	if err != nil {
+		_ = sendConn.Close()
+		return nil, err
+	}
+	err = sendConn.SetBPF(filter)
+	if err != nil {
+		_ = sendConn.Close()
+		return nil, err
+	}
+
 	uconn, err := net.ListenUDP("udp", &net.UDPAddr{
 		IP:   net.ParseIP(localAddr),
 		Port: port,
@@ -57,6 +70,12 @@ func NewIPUDPConn(localAddr string, port int) (*IPUDPConn, error) {
 
 		ttl: 64,
 	}, nil
+}
+
+func createDropAllBPF() []bpf.Instruction {
+	return []bpf.Instruction{
+		bpf.RetConstant{Val: 0},
+	}
 }
 
 // SetTimeout sets the timeout for the connection.
