@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/smallnest/mule"
 )
@@ -18,7 +19,17 @@ func main() {
 	var buf = make([]byte, 1024)
 	localPort := uint16(20000)
 	for {
-		_, err = conn.WriteToIP([]byte(fmt.Sprintf("test-%d", localPort)), "127.0.0.1", "127.0.0.1", localPort, 30000)
+		payload := mule.MakePayload(mule.PayloadType5A, 1024)
+		err = mule.EncodePayloadWithPort(uint64(time.Now().UnixNano()), 8888, localPort, 30000, payload, mule.PayloadType5A)
+		if err != nil {
+			panic(err)
+		}
+		data, err := mule.SimpleEncodeIPPacket("127.0.0.1", "127.0.0.1", localPort, 30000, payload)
+		if err != nil {
+			panic(err)
+		}
+
+		_, err = conn.WriteToIP(data, "127.0.0.1", "127.0.0.1", localPort, 30000)
 		if err != nil {
 			panic(err)
 		}
@@ -32,7 +43,13 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Printf("received from %s: %s\n", addr.String(), buf[:n])
+		ts, seq, payloadType, err := mule.DecodePayload(buf[:n])
+		if err != nil {
+			panic(err)
+		}
+		isSame, _ := mule.ComparePayload(payload, buf[:n], 21, 1024-21)
+
+		fmt.Printf("received from %s, ts: %v, seq: %v, pt: %v, same:%t\n", addr.String(), ts, seq, payloadType, isSame)
 	}
 }
 

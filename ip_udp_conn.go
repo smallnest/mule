@@ -6,7 +6,6 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	qbpf "github.com/smallnest/qianmo/bpf"
 	"golang.org/x/net/bpf"
@@ -17,8 +16,8 @@ import (
 // It is used to send UDP packets with raw IP headers.
 // And receive UDP packets with net.recvConn.
 type IPUDPConn struct {
-	sendConn *ipv4.RawConn
-	recvConn *net.UDPConn
+	sendConn *ipv4.RawConn // IPv4 raw connection for sending UDP packets
+	recvConn *net.UDPConn  // UDP connection for receiving UDP packets
 
 	localIP string
 
@@ -32,8 +31,14 @@ type IPUDPConn struct {
 // NewIPUDPConn creates a new IPUDPConn.
 // It creates an IPv4 raw connection for sending UDP packets with raw IP headers.
 // And a UDP connection for receiving UDP packets.
+//
+// @param localAddr: the local IP address to bind for sending UDP packets
+// @param port: the local port to bind for receiving UDP packets
 func NewIPUDPConn(localAddr string, port int) (*IPUDPConn, error) {
 	pconn, err := net.ListenPacket("ip:udp", localAddr)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create an IPv4 raw connection
 	sendConn, err := ipv4.NewRawConn(pconn)
@@ -42,7 +47,7 @@ func NewIPUDPConn(localAddr string, port int) (*IPUDPConn, error) {
 		return nil, err
 	}
 
-	// only send packets with the drop all filter
+	// only send packets, not for receiving, so configure the drop all filter
 	dropAllFilter := createDropAllBPF()
 	filter, err := bpf.Assemble(dropAllFilter)
 	if err != nil {
@@ -104,7 +109,7 @@ func (c *IPUDPConn) WriteToIP(payload []byte, localIP, remoteIP string, localPor
 		localIP = c.localIP
 	}
 
-	data, err := c.encodeIPPacket(localIP, remoteIP, localPort, remotePort, payload)
+	data, err := EncodeIPPacket(localIP, remoteIP, localPort, remotePort, payload, c.ttl, c.tos, layers.IPv4Flag(c.ipv4Flag))
 	if err != nil {
 		return 0, fmt.Errorf("failed to encode IP packet: %w", err)
 	}
@@ -117,34 +122,6 @@ func (c *IPUDPConn) WriteToIP(payload []byte, localIP, remoteIP string, localPor
 		return 0, fmt.Errorf("failed to write to IP: %w", err)
 	}
 	return n, nil
-}
-
-func (c *IPUDPConn) encodeIPPacket(localIP, dstIP string, localPort, remotePort uint16, payload []byte) ([]byte, error) {
-	ip := &layers.IPv4{
-		SrcIP:    net.ParseIP(localIP),
-		DstIP:    net.ParseIP(dstIP),
-		Version:  4,
-		TTL:      c.ttl,
-		Protocol: layers.IPProtocolUDP,
-		TOS:      c.tos,
-		Flags:    layers.IPv4Flag(c.ipv4Flag),
-	}
-
-	udp := &layers.UDP{
-		SrcPort: layers.UDPPort(localPort),
-		DstPort: layers.UDPPort(remotePort),
-	}
-	udp.SetNetworkLayerForChecksum(ip)
-
-	buf := gopacket.NewSerializeBuffer()
-	opts := gopacket.SerializeOptions{
-		ComputeChecksums: true,
-		FixLengths:       true,
-	}
-
-	err := gopacket.SerializeLayers(buf, opts, ip, udp, gopacket.Payload(payload))
-
-	return buf.Bytes(), err
 }
 
 // ReadFrom reads a UDP packet from the connection.
