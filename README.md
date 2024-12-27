@@ -1,4 +1,7 @@
 # Mule
+![GitHub](https://img.shields.io/github/license/smallnest/mule) ![GitHub Action](https://github.com/smallnest/mule/actions/workflows/action.yaml/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/smallnest/mule)](https://goreportcard.com/report/github.com/smallnest/mule)  [![GoDoc](https://godoc.org/github.com/smallnest/mule?status.png)](http://godoc.org/github.com/smallnest/mule)  
+
+
 
 Mule is a Go library that provides a convenient way to send UDP packets to multiple remote servers with unreachable ports and receive ICMP Destination/Port Unreachable packets from those servers. This can be useful for network diagnostics, port scanning, or other network-related tasks.
 
