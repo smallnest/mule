@@ -52,13 +52,6 @@ func WithTTL(ttl uint8) OptionFn {
 	}
 }
 
-// WithIPv4Flag sets the IPv4 flag for the connection
-func WithIPv4Flag(flag IPv4Flag) OptionFn {
-	return func(c *Conn) {
-		c.ipv4Flag = flag
-	}
-}
-
 // Conn represents a Mule connection.
 // You can use it to send UDP packets to multiple remote servers with unreachable ports.
 // Then you receive ICMP Destination/Port Unreachable packets from the remote servers.
@@ -122,7 +115,7 @@ func (c *Conn) listen() error {
 	}
 	c.sendConn = rawConn
 
-	recvConn, err := icmp.ListenPacket("ip4:1", c.localIP)
+	recvConn, err := icmp.ListenPacket("ip4:icmp", c.localIP)
 	if err != nil {
 		_ = rawConn.Close()
 		return fmt.Errorf("failed to listen ICMP: %w", err)
@@ -133,7 +126,7 @@ func (c *Conn) listen() error {
 }
 
 // ReadFrom reads ICMP data from the remote server and returns the destination IP, source port, and destination port.
-func (c *Conn) ReadFrom() (string, uint16, uint16, error) {
+func (c *Conn) ReadFrom() (remoteIP string, srcPort uint16, dstPort uint16, err error) {
 	buf := make([]byte, maxPacketSize)
 
 	var deadline time.Time
@@ -186,16 +179,13 @@ func (c *Conn) ReadFrom() (string, uint16, uint16, error) {
 			udp, _ := udpLayer.(*layers.UDP)
 
 			return ip.DstIP.String(), uint16(udp.SrcPort), uint16(udp.DstPort), nil
-
-		default:
-
 		}
 	}
 }
 
 // WriteToIP writes UDP data to the specified destination IP and port.
-func (c *Conn) WriteToIP(payload []byte, remoteIP string, localPort, remotePort uint16) (int, error) {
-	data, err := c.encodeIPPacket(remoteIP, localPort, remotePort, payload)
+func (c *Conn) WriteToIP(id uint16, payload []byte, remoteIP string, localPort, remotePort uint16) (int, error) {
+	data, err := c.encodeIPPacket(id, remoteIP, localPort, remotePort, payload)
 	if err != nil {
 		return 0, fmt.Errorf("failed to encode IP packet: %w", err)
 	}
@@ -210,15 +200,16 @@ func (c *Conn) WriteToIP(payload []byte, remoteIP string, localPort, remotePort 
 	return n, nil
 }
 
-func (c *Conn) encodeIPPacket(dstIP string, localPort, remotePort uint16, payload []byte) ([]byte, error) {
+func (c *Conn) encodeIPPacket(id uint16, dstIP string, localPort, remotePort uint16, payload []byte) ([]byte, error) {
 	ip := &layers.IPv4{
+		Id:       id,
 		SrcIP:    net.ParseIP(c.localIP),
 		DstIP:    net.ParseIP(dstIP),
 		Version:  4,
 		TTL:      c.ttl,
 		Protocol: layers.IPProtocolUDP,
 		TOS:      c.tos,
-		Flags:    layers.IPv4Flag(c.ipv4Flag),
+		Flags:    layers.IPv4DontFragment,
 	}
 
 	udp := &layers.UDP{

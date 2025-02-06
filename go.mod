@@ -3,7 +3,9 @@ module github.com/smallnest/mule
 go 1.22.0
 
 require (
+	github.com/juju/ratelimit v1.0.2
 	github.com/smallnest/gopacket v0.0.0-20250122103831-8d39ded98d1c
+	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/net v0.31.0
 )

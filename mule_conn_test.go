@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -36,13 +37,17 @@ func TestConn(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	pid := os.Getpid()
+	seq := uint16(pid & 0xffff)
+
 	// Send a UDP packet in a goroutine
 	go func() {
+
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(time.Second):
-			n, err := muleConn.WriteToIP([]byte("test"), remoteIP, 8972, 65535)
+			n, err := muleConn.WriteToIP(seq, []byte("test"), remoteIP, 8972, 65535)
 			require.NoError(t, err)
 			assert.Greater(t, n, 0)
 		}
