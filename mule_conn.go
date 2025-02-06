@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
+	"github.com/smallnest/gopacket"
+	"github.com/smallnest/gopacket/layers"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 )
@@ -158,7 +158,7 @@ func (c *Conn) ReadFrom() (string, uint16, uint16, error) {
 			return "", 0, 0, err
 		}
 
-		// 打印结果
+		// handle ICMP message
 		switch msg.Type {
 		case ipv4.ICMPTypeDestinationUnreachable:
 			dstUnreach, ok := msg.Body.(*icmp.DstUnreach)
@@ -171,15 +171,14 @@ func (c *Conn) ReadFrom() (string, uint16, uint16, error) {
 				continue
 			}
 
-			// 获取IP层
+			// IP Layer
 			ipLayer := packet.Layer(layers.LayerTypeIPv4)
 			if ipLayer == nil {
 				continue
 			}
-
 			ip, _ := ipLayer.(*layers.IPv4)
 
-			// 获取UDP层
+			// udp layer
 			udpLayer := packet.Layer(layers.LayerTypeUDP)
 			if udpLayer == nil {
 				continue

@@ -3,8 +3,7 @@ module github.com/smallnest/mule
 go 1.22.0
 
 require (
-	github.com/google/gopacket v1.1.19
-	github.com/smallnest/qianmo v0.3.1
+	github.com/smallnest/gopacket v0.0.0-20250122103831-8d39ded98d1c
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/net v0.31.0
 )
